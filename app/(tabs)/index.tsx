@@ -1,70 +1,91 @@
-import { Image, StyleSheet, Platform } from 'react-native';
+import { useState, useCallback } from 'react';
+import { Image, StyleSheet, Platform, Button, FlatList, SafeAreaView } from 'react-native';
 
-import { HelloWave } from '@/components/HelloWave';
 import ParallaxScrollView from '@/components/ParallaxScrollView';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import SimpleImageCarousel from '@/components/SimpleImageCarousel';
+
+import * as ImagePicker from 'expo-image-picker';
+
+const Header = ({ images, onPressSelectImage }: { images: Array<string>, onPressSelectImage: () => void }) => {
+  return (
+    <ThemedView style={styles.headerContainer}>
+      <SafeAreaView/>
+      <SimpleImageCarousel images={images} onPressSelectImage={onPressSelectImage} />
+    </ThemedView>
+  )
+}
 
 export default function HomeScreen() {
+  const [images, setImages] = useState<Array<string> | null>(null);
+
+  const handleImageSelection = async () => {
+    // No permissions request is necessary for launching the image library
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.All,
+      allowsMultipleSelection: true,
+      aspect: [4, 3],
+      quality: 1,
+    });
+
+    if (!result.canceled) {
+      const imageUris = result.assets.reduce((accum, image) => {
+        if (image.uri) {
+          accum.push(image.uri)
+        }
+        return accum;
+      }, [])
+      return imageUris;
+    }
+  }
+
+  const onPressSelectImage = async () => {
+    const imageUris = await handleImageSelection();
+
+    if (imageUris?.length) {
+      setImages(imageUris);
+    }
+  };
+
+  const onPressAddMoreImages = async () => {
+    const imageUris = await handleImageSelection();
+
+    if (imageUris?.length) {
+      setImages(prevImages => [...prevImages, ...imageUris]);
+    }
+  };
+
+  const onPressClearImages = async () => {
+      setImages(null);
+  };
   return (
     <ParallaxScrollView
       headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
       headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
+        <Header images={images} onPressSelectImage={onPressSelectImage} />
       }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({ ios: 'cmd + d', android: 'cmd + m' })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          Tap the Explore tab to learn more about what's included in this starter app.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          When you're ready, run{' '}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
+      <ThemedView style={styles.contentContainer}>
+        {images?.length ? (
+          <>
+          <Button title="Add more images" onPress={onPressAddMoreImages} />
+          <Button title="Clear images" onPress={onPressClearImages} />
+          </>
+        ) : null}
       </ThemedView>
     </ParallaxScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
+  headerContainer: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
-    gap: 8,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  contentContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
 });
